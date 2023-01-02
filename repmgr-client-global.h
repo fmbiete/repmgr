@@ -88,6 +88,7 @@ typedef struct
 	char		replication_user[MAXLEN];
 	char		upstream_conninfo[MAXLEN];
 	bool		without_barman;
+	bool    with_pgbackrest;
 	bool		replication_conf_only;
 	bool		verify_backup;
 
@@ -166,7 +167,7 @@ typedef struct
 		UNKNOWN_NODE_ID, "", "", UNKNOWN_NODE_ID, \
 		/* "standby clone" options */ \
 		false, CONFIG_FILE_SAMEPATH, false, false, false, "", "", "", \
-		false, false, false, \
+		false, false, false, false, \
 		/* "standby clone"/"standby follow" options */ \
 		NO_UPSTREAM_NODE, \
 		/* "standby register" options */ \
@@ -193,7 +194,8 @@ typedef struct
 typedef enum
 {
 	barman,
-	pg_basebackup
+	pg_basebackup,
+	pgbackrest
 } standy_clone_mode;
 
 typedef enum

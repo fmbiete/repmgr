@@ -104,6 +104,7 @@ static void _do_standby_promote_internal(PGconn *conn);
 static void _do_create_replication_conf(void);
 
 static void check_barman_config(void);
+static void check_pgbackrest_config(void);
 static void check_source_server(void);
 static void check_source_server_via_barman(void);
 static bool check_upstream_config(PGconn *conn, int server_version_num, t_node_info *node_info, bool exit_on_error);
@@ -113,6 +114,7 @@ static void check_recovery_type(PGconn *conn);
 static void initialise_direct_clone(t_node_info *local_node_record, t_node_info *upstream_node_record);
 static int	run_basebackup(t_node_info *node_record);
 static int	run_file_backup(t_node_info *node_record);
+static int  run_pgbackrest_backup(t_node_info *node_record);
 
 static void copy_configuration_files(bool delete_after_copy);
 
@@ -217,22 +219,34 @@ do_standby_clone(void)
 	 */
 	mode = get_standby_clone_mode();
 
-	if (mode == barman)
+	switch (mode)
 	{
-		/*
-		 * Not currently possible to use --verify-backup with Barman
-		 */
-		if (runtime_options.verify_backup == true)
-		{
-			log_error(_("--verify-backup option cannot be used when cloning from Barman backups"));
-			exit(ERR_BAD_CONFIG);
-		}
+		case barman:
+			/*
+			 * Not currently possible to use --verify-backup with Barman
+			 */
+			if (runtime_options.verify_backup == true)
+			{
+				log_error(_("--verify-backup option cannot be used when cloning from Barman backups"));
+				exit(ERR_BAD_CONFIG);
+			}
 
-		/*
-		 * Sanity-check barman connection and installation;
-		 * this will exit with ERR_BARMAN if problems found.
-		 */
-		check_barman_config();
+			/*
+			 * Sanity-check barman connection and installation;
+			 * this will exit with ERR_BARMAN if problems found.
+			 */
+			check_barman_config();
+			break;
+
+		case pgbackrest:
+			if (runtime_options.verify_backup == true)
+			{
+				log_error(_("--verify-backup option cannot be used when cloning from pgbackrest backups"));
+				exit(ERR_BAD_CONFIG);
+			}
+
+			check_pgbackrest_config();
+			break;
 	}
 
 	init_node_record(&local_node_record);
@@ -687,40 +701,28 @@ do_standby_clone(void)
 		exit(SUCCESS);
 	}
 
-	if (mode != barman)
-	{
-		initialise_direct_clone(&local_node_record, &upstream_node_record);
-	}
-
 	switch (mode)
 	{
 		case pg_basebackup:
+			initialise_direct_clone(&local_node_record, &upstream_node_record);
 			log_notice(_("starting backup (using pg_basebackup)..."));
-			break;
-		case barman:
-			log_notice(_("retrieving backup from Barman..."));
-			break;
-		default:
-			/* should never reach here */
-			log_error(_("unknown clone mode"));
-	}
 
-	if (mode == pg_basebackup)
-	{
-		if (runtime_options.fast_checkpoint == false)
-		{
-			log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option"));
-		}
-	}
+			if (runtime_options.fast_checkpoint == false)
+			{
+				log_hint(_("this may take some time; consider using the -c/--fast-checkpoint option"));
+			}
 
-	switch (mode)
-	{
-		case pg_basebackup:
 			r = run_basebackup(&local_node_record);
 			break;
 		case barman:
+			log_notice(_("retrieving backup from Barman..."));
+
 			r = run_file_backup(&local_node_record);
 			break;
+		case pgbackrest:
+			log_notice(_("retrieving backup from pgbackrest..."));
+
+			r = run_pgbackrest_backup(&local_node_record);
 		default:
 			/* should never reach here */
 			log_error(_("unknown clone mode"));
@@ -846,6 +848,10 @@ do_standby_clone(void)
 		case barman:
 			log_notice(_("standby clone (from Barman) complete"));
 			break;
+
+		case pgbackrest:
+			log_notice(_("standby clone (from pgbackrest) complete"));
+			break;
 	}
 
 	/*
@@ -936,6 +942,9 @@ do_standby_clone(void)
 			break;
 		case barman:
 			appendPQExpBufferStr(&event_details, "barman");
+			break;
+		case pgbackrest:
+			appendPQExpBufferStr(&event_details, "pgbackrest");
 			break;
 	}
 
@@ -1070,6 +1079,12 @@ check_barman_config(void)
 	termPQExpBuffer(&command);
 }
 
+
+void
+check_pgbackrest_config(void)
+{
+	// TODO:
+}
 
 /*
  * _do_create_replication_conf()
@@ -7127,6 +7142,24 @@ run_basebackup(t_node_info *node_record)
 	return SUCCESS;
 }
 
+static int
+run_pgbackrest_backup(t_node_info *node_record)
+{
+	bool    success = false;
+	int			r = SUCCESS;
+
+	Assert(mode == pgbackrest);
+	log_verbose(LOG_DEBUG, "executing:\n  %s",
+							config_file_options.pgbackrest_restore_command);
+	success = local_command(config_file_options.pgbackrest_restore_command, NULL);
+	if (!success)
+	{
+		log_error(_("pgbackrest restore failed, please check pgbackrest restore log file"));
+		r = ERR_BAD_PGBACKREST;
+	}
+
+	return r;
+}
 
 /*
  * Perform a filesystem backup using rsync.
@@ -7884,6 +7917,8 @@ get_barman_property(char *dst, char *name, char *local_repmgr_directory)
 
 	termPQExpBuffer(&command_output);
 }
+
+
 
 
 static void

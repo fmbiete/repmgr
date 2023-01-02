@@ -867,6 +867,20 @@ struct ConfigFileSetting config_file_settings[] =
 		{ .strmaxlen = sizeof(config_file_options.barman_config) },
 		{}
 	},
+	/* ===============
+	 * pgBackRest settings
+	 * ===============
+	 */
+	/* pgbackrest_restore_command */
+	{
+		"pgbackrest_restore_command",
+		CONFIG_STRING,
+		{ .strptr = config_file_options.pgbackrest_restore_command },
+		{ .strdefault = "" },
+		{},
+		{ .strmaxlen = sizeof(config_file_options.pgbackrest_restore_command) },
+		{}
+	},
 	/* ==================
 	 * rsync/ssh settings
 	 * ==================
@@ -943,4 +957,3 @@ struct ConfigFileSetting config_file_settings[] =
 		NULL, CONFIG_INT, {}, {}, {}, {}, {}
 	}
 };
-

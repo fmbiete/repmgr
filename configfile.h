@@ -243,6 +243,9 @@ typedef struct
 	char		barman_server[MAXLEN];
 	char		barman_config[MAXLEN];
 
+	/* pgBackRest settings */
+	char    pgbackrest_restore_command[MAXPGPATH];
+
 	/* rsync/ssh settings */
 	char		rsync_options[MAXLEN];
 	char		ssh_options[MAXLEN];

@@ -280,6 +280,13 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# Barman server (needed if the file is
 					# in a non-standard location)
 
+
+#------------------------------------------------------------------------------
+# pgBackRest options
+#------------------------------------------------------------------------------
+pgbackrest_restore_command=''   # The pgBackRest restore command to use
+																		for standby clone
+
 #------------------------------------------------------------------------------
 # Failover and monitoring settings (repmgrd)
 #------------------------------------------------------------------------------
@@ -440,5 +447,3 @@ ssh_options='-q -o ConnectTimeout=10'	# Options to append to "ssh"
 					# Note that these values will be checked when executing
 					# "repmgr standby switchover" to warn about potential
 					# issues with shutting down the demotion candidate.
-
-
