@@ -70,7 +70,7 @@
 #include "repmgr-action-service.h"
 #include "repmgr-action-daemon.h"
 
-#include <storage/fd.h>			/* for PG_TEMP_FILE_PREFIX */
+#include <common/file_utils.h> 		/* for PG_TEMP_FILE_PREFIX */
 
 /* globally available variables *
  * ============================ */
